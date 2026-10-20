@@ -191,18 +191,29 @@ function frame(now){
 }
 requestAnimationFrame(frame);
 
-/* ================= NHẠC NỀN: Tặng em đoá hoa hồng - luôn bật, tự lặp ================= */
+/* ================= NHẠC NỀN: Tặng em đoá hoa hồng - luôn bật, bắt đầu từ giây 13, hết bài thì lặp lại từ giây 13 ================= */
 const mus=document.getElementById('mus'),VID='jq2pn8b6q-A';
+const START_AT=13; // nhạc bắt đầu từ giây 13
 
-mus.innerHTML='<iframe id="yt" src="https://www.youtube.com/embed/'+VID+'?autoplay=1&mute=1&loop=1&playlist='+VID+'&playsinline=1&controls=0&enablejsapi=1" title="Tặng em đoá hoa hồng - Dacol ft. Wang An Nan" allow="autoplay; encrypted-media" referrerpolicy="strict-origin-when-cross-origin"></iframe>';
+mus.innerHTML='<iframe id="yt" src="https://www.youtube.com/embed/'+VID+'?autoplay=1&mute=1&start='+START_AT+'&playsinline=1&controls=0&enablejsapi=1" title="Tặng em đoá hoa hồng - Dacol ft. Wang An Nan" allow="autoplay; encrypted-media" referrerpolicy="strict-origin-when-cross-origin"></iframe>';
 const yt=document.getElementById('yt');
 const cmd=(f,args=[])=>{try{yt.contentWindow.postMessage(JSON.stringify({event:'command',func:f,args:args}),'*')}catch(e){}};
 
-// Phát có tiếng, từ giây 0; gửi lệnh vài lần để chắc chắn trình phát đã nhận
+// Phát có tiếng, từ giây 13; gửi lệnh vài lần để chắc chắn trình phát đã nhận
 function startMusic(){
-  const go=()=>{cmd('seekTo',[0,true]);cmd('setVolume',[100]);cmd('unMute');cmd('playVideo')};
+  const go=()=>{cmd('seekTo',[START_AT,true]);cmd('setVolume',[100]);cmd('unMute');cmd('playVideo')};
   go();setTimeout(go,600);setTimeout(go,1800);
 }
+
+// Hết bài thì phát lại từ giây 13 (loop mặc định của YouTube sẽ quay về 0s)
+yt.addEventListener('load',()=>{try{yt.contentWindow.postMessage(JSON.stringify({event:'listening',id:1}),'*')}catch(e){}});
+let started=false;
+addEventListener('message',e=>{
+  if(!started||typeof e.data!=='string')return;
+  try{const d=JSON.parse(e.data);
+    if(d.event==='onStateChange'&&d.info===0)startMusic();
+  }catch(_){}
+});
 
 const overlay=document.getElementById('overlay');
 const openBtn=document.getElementById('open-btn');
@@ -215,6 +226,7 @@ openBtn.addEventListener('click',()=>{
   shown=-1;
   msg.classList.remove('on');
 
+  started=true;
   startMusic(); // bấm "Mở Thiệp" là nhạc bật ngay
 });
 
