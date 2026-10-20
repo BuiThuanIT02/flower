@@ -20,66 +20,26 @@ button:focus-visible{outline:2px solid var(--glow);outline-offset:2px}
 #snd svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 #snd .x{display:none}#snd.off .w{display:none}#snd.off .x{display:inline}
 
-/* CSS cho bảng thông báo mở thiệp khi quét QR */
-#overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(5, 11, 36, 0.95);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 999;
-  transition: opacity 0.5s ease;
-}
-.card-box {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  padding: 30px 24px;
-  border-radius: 20px;
-  text-align: center;
-  backdrop-filter: blur(10px);
-  max-width: 300px;
-  width: 90%;
-}
-.card-box h2 {
-  margin-top: 0;
-  font-family: "Playfair Display", Georgia, serif;
-  color: var(--glow);
-  font-size: 24px;
-}
-.card-box p {
-  font-size: 14px;
-  line-height: 1.5;
-  margin-bottom: 20px;
-  color: var(--ink);
-  opacity: 0.9;
-}
-.card-box button {
-  background: var(--glow);
-  color: var(--night);
-  font-weight: 600;
-  border: none;
-  padding: 12px 24px;
-  font-size: 16px;
-  border-radius: 999px;
-  width: 100%;
-  box-shadow: 0 0 15px rgba(255, 233, 168, 0.4);
-}
+/* Bảng thông báo mở thiệp khi quét QR */
+#overlay{position:fixed;inset:0;background:rgba(5,11,36,.95);display:flex;align-items:center;justify-content:center;z-index:999;transition:opacity .5s ease}
+.card-box{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);padding:30px 24px;border-radius:20px;text-align:center;backdrop-filter:blur(10px);max-width:300px;width:90%}
+.card-box h2{margin-top:0;font-family:"Playfair Display",Georgia,serif;color:var(--glow);font-size:24px}
+.card-box p{font-size:14px;line-height:1.5;margin-bottom:20px;color:var(--ink);opacity:.9}
+.card-box button{background:var(--glow);color:var(--night);font-weight:600;border:none;padding:12px 24px;font-size:16px;border-radius:999px;width:100%;box-shadow:0 0 15px rgba(255,233,168,.4)}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500&family=Playfair+Display:ital@1&display=swap">
 </head>
 <body>
 
-<!-- Lớp phủ yêu cầu chạm sau khi quét QR -->
 <div id="overlay">
   <div class="card-box">
     <h2>💌 Chúc Mừng 20/10 💌</h2>
-    <p>Bạn có một món quà đặc biệt đang chờ. Nhấn vào đây để mở thiệp và nghe nhạc nhé!</p>
+    <p>Bạn có một món quà đặc biệt đang chờ.</p>
     <button id="open-btn">Mở Thiệp ❤️</button>
   </div>
 </div>
 
-<canvas id="c" aria-label="Hoa Quỳnh nở trong đêm"></canvas>
+<canvas id="c" aria-label=""></canvas>
 <div id="msg" role="status"></div>
 <div id="bar"><button id="replay">Xem lại</button></div>
 <button id="snd" class="off" aria-label="Bật/tắt nhạc" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path class="w" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path class="x" d="M16.5 9.5l5 5M21.5 9.5l-5 5"/></svg></button>
@@ -180,7 +140,7 @@ function frame(now){
     x.lineTo(W,H);x.fill();
   });
   const cx=W/2,base=H*.9,R=Math.min(W,H*.62)*.3,top=H*.56;
-  const grow=seg(T,1,5),bloom=seg(T,6,15);
+  const grow=seg(T,1,5);
   const sway=Math.sin(T*.8)*4;
   const ty=base-(base-top)*grow;
   x.strokeStyle='#2f9a5e';x.lineWidth=5;x.lineCap='round';
@@ -202,41 +162,95 @@ function frame(now){
 }
 requestAnimationFrame(frame);
 
-document.getElementById('replay').onclick=()=>{t0=performance.now();shown=-1;msg.classList.remove('on')};
-
+/* ================= NHẠC NỀN: chỉ phát 0s → 45s, nhỏ dần ở cuối ================= */
 const mus=document.getElementById('mus'),snd=document.getElementById('snd'),VID='nTEYgZywpPA';
-mus.innerHTML='<iframe id="yt" src="https://www.youtube-nocookie.com/embed/'+VID+'?autoplay=1&mute=1&loop=1&playlist='+VID+'&playsinline=1&controls=0&enablejsapi=1" allow="autoplay; encrypted-media" title="Nhạc nền"></iframe>';
-const yt=document.getElementById('yt');
-const cmd=f=>{try{yt.contentWindow.postMessage(JSON.stringify({event:'command',func:f,args:[]}),'*')}catch(e){}};
+const MUSIC_LIMIT=45000; // tổng thời lượng nhạc: 45 giây
+const FADE_MS=4000;      // nhỏ dần trong 4 giây cuối
 
-let soundOn=false;
-function setSnd(on){
-  soundOn=on;
-  cmd(on?'unMute':'mute');
-  if(on) cmd('playVideo');
-  snd.classList.toggle('off',!on);
-  snd.setAttribute('aria-pressed',on);
+mus.innerHTML='<iframe id="yt" src="https://www.youtube-nocookie.com/embed/'+VID+'?autoplay=1&mute=1&playsinline=1&controls=0&enablejsapi=1" allow="autoplay; encrypted-media" title="Nhạc nền"></iframe>';
+const yt=document.getElementById('yt');
+const cmd=(f,args=[])=>{try{yt.contentWindow.postMessage(JSON.stringify({event:'command',func:f,args:args}),'*')}catch(e){}};
+
+let soundOn=false, musicEnded=true;
+let stopTimer=null, fadeDelay=null, fadeTimer=null;
+
+function updateSndUI(){
+  snd.classList.toggle('off',!soundOn);
+  snd.setAttribute('aria-pressed',soundOn);
 }
 
-// Xử lý khi người nhận quét QR xong và bấm nút "Mở Thiệp"
-const overlay = document.getElementById('overlay');
-const openBtn = document.getElementById('open-btn');
+function clearMusicTimers(){
+  clearTimeout(stopTimer);
+  clearTimeout(fadeDelay);
+  clearInterval(fadeTimer);
+}
 
-openBtn.addEventListener('click', () => {
-  // 1. Làm mờ và ẩn bảng thông báo
-  overlay.style.opacity = '0';
-  setTimeout(() => overlay.remove(), 500);
+// Phát từ giây 0, nhỏ dần ở cuối, dừng đúng giây 45
+function startMusic(){
+  clearMusicTimers();
+  cmd('setVolume',[100]);
+  cmd('seekTo',[0,true]);
+  cmd('unMute');
+  cmd('playVideo');
+  musicEnded=false;
 
-  // 2. Reset lại hiệu ứng hoa quỳnh chạy từ đầu
-  t0 = performance.now();
-  shown = -1;
+  // Bắt đầu giảm âm lượng ở giây 41
+  fadeDelay=setTimeout(()=>{
+    const t1=performance.now();
+    fadeTimer=setInterval(()=>{
+      const k=Math.min(1,(performance.now()-t1)/FADE_MS);
+      cmd('setVolume',[Math.round(100*(1-k))]);
+      if(k>=1)clearInterval(fadeTimer);
+    },100);
+  },MUSIC_LIMIT-FADE_MS);
+
+  // Dừng hẳn ở giây 45
+  stopTimer=setTimeout(()=>{
+    clearInterval(fadeTimer);
+    cmd('pauseVideo');
+    cmd('mute');
+    cmd('setVolume',[100]);
+    musicEnded=true;
+    soundOn=false;
+    updateSndUI();
+  },MUSIC_LIMIT);
+}
+
+function setSnd(on){
+  soundOn=on;
+  if(on){
+    if(musicEnded) startMusic();
+    else {cmd('unMute');cmd('playVideo');}
+  }else{
+    cmd('mute'); // chỉ tắt tiếng, đồng hồ 45s vẫn chạy
+  }
+  updateSndUI();
+}
+
+const overlay=document.getElementById('overlay');
+const openBtn=document.getElementById('open-btn');
+
+openBtn.addEventListener('click',()=>{
+  overlay.style.opacity='0';
+  setTimeout(()=>overlay.remove(),500);
+
+  t0=performance.now();
+  shown=-1;
   msg.classList.remove('on');
 
-  // 3. Kích hoạt bật tiếng ngay lập tức theo đúng ý bạn
-  setSnd(true);
+  soundOn=true;
+  startMusic();
+  updateSndUI();
 });
 
-// Nút bật/tắt âm thanh phụ ở góc trên bên phải
+// Nút "Xem lại": chạy lại hiệu ứng, nếu đang bật tiếng thì nhạc cũng phát lại từ 0s
+document.getElementById('replay').addEventListener('click',()=>{
+  t0=performance.now();
+  shown=-1;
+  msg.classList.remove('on');
+  if(soundOn) startMusic();
+});
+
 snd.addEventListener('click',()=>setSnd(!soundOn));
 </script>
 </body>
